@@ -1,5 +1,5 @@
 cd backend;
-uv init;
+uv sync;
 
 cd ../;
 
