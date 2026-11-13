@@ -1,16 +1,19 @@
 import os
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from routes.authRouter import authRouter
 from uvicorn import run
 
 app = FastAPI(openapi_url="/openapi.json" if os.environ.get("DEBUG") == "True" else "")
 
-app.add_api_route("/auth", authRouter)
+app.include_router(authRouter)
 
 if __name__ == "__main__":
+    load_dotenv()
     run(
         "main:app",
         host=os.environ.get("BACKEND_HOST"),
-        port=os.environ.get("BACKEND_PORT")
+        port=int(os.environ.get("BACKEND_PORT")),
+        reload=True,
     )
