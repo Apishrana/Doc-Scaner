@@ -19,6 +19,9 @@ DATABASE_URL=sqlite:///database.db
 BACKEND_HOST=0.0.0.0
 BACKEND_PORT=8000
 
+# File Encryption
+ENCRYPTION_KEY=`python3 -c "import secrets,base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"`
+
 # Auth
 SECRET_KEY=`openssl rand -hex 32`
 ALGORITHM=HS256

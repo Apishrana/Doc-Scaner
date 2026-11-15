@@ -1,7 +1,6 @@
 import os
 from datetime import UTC, datetime, timedelta
 
-from db import getSession
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
@@ -9,6 +8,7 @@ from models.auth import LoginModal, SignupModal, TokenData
 from models.user import User
 from passlib.context import CryptContext
 from sqlmodel import Session, select
+from tool.db import getSession
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")

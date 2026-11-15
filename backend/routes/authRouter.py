@@ -1,9 +1,9 @@
 from controllers.authController import loginController, signupController
-from db import getSession
 from fastapi import Depends
 from fastapi.routing import APIRouter
 from models.auth import LoginModal, SignupModal
 from sqlmodel import Session
+from tool.db import getSession
 
 authRouter = APIRouter(prefix="/auth")
 
