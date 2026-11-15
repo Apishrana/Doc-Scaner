@@ -3,11 +3,16 @@ if [[ ! -f backend/.env ]] || \
    ! grep -q "^FIREBASE_CREDENTIALS=" backend/.env || \
    ! grep -q "^DEBUG=" backend/.env || \
    ! grep -q "^DATABASE_URL=" backend/.env || \
+   ! grep -q "^SUPABASE_URL=" backend/.env || \
    ! grep -q "^SUPABASE_KEY=" backend/.env || \
    ! grep -q "^BACKEND_HOST=" backend/.env || \
    ! grep -q "^BACKEND_PORT=" backend/.env; then
 cat > backend/.env <<EOF
 # Supabase
+SUPABASE_URL=Use Your Url from Supabase project
+SUPABASE_KEY=Use Your Secret Key from Supabase project
+
+# Database
 DATABASE_URL=sqlite:///database.db
 
 # Backend

@@ -15,6 +15,7 @@ dependencies = [
     "jose>=1.0.0",
     "passlib>=1.7.4",
     "python-jose[cryptography]>=3.5.0",
+    "python-multipart>=0.0.32",
     "sqlmodel>=0.0.50",
     "supabase>=2.33.0",
 ]
