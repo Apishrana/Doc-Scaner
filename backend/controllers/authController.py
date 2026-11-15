@@ -1,10 +1,12 @@
 import os
 from datetime import UTC, datetime, timedelta
 
+from db import getSession
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from models.user import LoginModal, SignupModal, TokenData, User
+from models.auth import LoginModal, SignupModal, TokenData
+from models.user import User
 from passlib.context import CryptContext
 from sqlmodel import Session, select
 
@@ -63,6 +65,7 @@ def createAccessToken(data, expiresDelta):
 
 async def getCurrentUser(
     credentials: HTTPAuthorizationCredentials = Depends(security),  # noqa: B008
+    session: Session = Depends(getSession),  # noqa: B008
 ):
     token = credentials.credentials
     credentialException = HTTPException(
@@ -72,16 +75,16 @@ async def getCurrentUser(
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        userId = int(payload["sub"])
+        userId = payload["sub"]
         if userId is None:
             raise credentialException
-        tokenData = TokenData(User_id=userId)
+        tokenData = TokenData(id=userId)
 
     except JWTError as e:
         print(e)
         raise credentialException
 
-    user = getUser(userId=tokenData.id)
+    user = getUser(userId=tokenData.id, session=session)
     if user is None:
         raise credentialException
 

@@ -1,7 +1,6 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel
 from sqlmodel import Field, SQLModel
 
 
@@ -18,22 +17,3 @@ class User(SQLModel, table=True):
         sa_column_kwargs={"onupdate": lambda: datetime.now(UTC)},
     )
 
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-
-class TokenData(BaseModel):
-    id: UUID
-
-
-class LoginModal(BaseModel):
-    Email: str
-    Password: str
-
-
-class SignupModal(BaseModel):
-    Name: str
-    Email: str
-    Password: str

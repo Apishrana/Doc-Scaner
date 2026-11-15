@@ -2,7 +2,7 @@ from controllers.authController import loginController, signupController
 from db import getSession
 from fastapi import Depends
 from fastapi.routing import APIRouter
-from models.user import LoginModal, SignupModal
+from models.auth import LoginModal, SignupModal
 from sqlmodel import Session
 
 authRouter = APIRouter(prefix="/auth")
