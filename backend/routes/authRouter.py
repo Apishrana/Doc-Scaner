@@ -1,24 +1,20 @@
-from controllers.authController import authenticateUser, hashPass
-from db import supabase
+from controllers.authController import loginController, signupController
+from db import getSession
+from fastapi import Depends
 from fastapi.routing import APIRouter
 from models.user import LoginModal, SignupModal
+from sqlmodel import Session
 
 authRouter = APIRouter(prefix="/auth")
 
 
 @authRouter.post("/login")
-def login(userInput: LoginModal):
-    authenticateUser(userInput.Email, userInput.Password)
-    return {"m": 1}
+def login(userInput: LoginModal, session: Session = Depends(getSession)):  # noqa: B008
+    return loginController(userInput, session)
 
 
 @authRouter.post("/signup")
-def signup(userInput: SignupModal):
-    print(userInput.Password)
-    data = {
-        "user_name": userInput.Name,
-        "email": userInput.Email,
-        "password_hash": hashPass(userInput.Password)
-    }
-    supabase.table("users").insert(data).execute()
-    return {"m": 1}
+def signup(
+    userInput: SignupModal, session: Session = Depends(getSession)  # noqa: B008
+):
+    return signupController(userInput, session)

@@ -1,15 +1,16 @@
-import datetime
 import os
+from datetime import UTC, datetime, timedelta
 
-from db import supabase
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from models.user import TokenData, UserDB
+from models.user import LoginModal, SignupModal, TokenData, User
 from passlib.context import CryptContext
+from sqlmodel import Session, select
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
+TOKEN_EXPIRATION_TIME_MINUTS = int(os.getenv("TOKEN_EXPIRATION_TIME_MINUTS"))
 
 pwdContext = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
@@ -23,36 +24,28 @@ def hashPass(password):
     return pwdContext.hash(password)
 
 
-def getUser(userId):
+def getUser(userId, session: Session):
     try:
-        response = (
-            supabase.table("users").select("*").eq("User_id", userId).single().execute()
-        )
-        print(response.data)
-        return UserDB(**response.data)
-    except Exception as e:
+        return session.exec(select(User).where(User.id == userId)).first()
+    except Exception as e:  # noqa: BLE001
         print(e)
         return None
 
 
-def getUserFromEmail(email):
+def getUserFromEmail(email, session: Session):
     try:
-        response = (
-            supabase.table("users").select("*").eq("email", email).single().execute()
-        )
-        print(response.data)
-        return UserDB(**response.data)
-    except Exception as e:
+        return session.exec(select(User).where(User.email == email)).first()
+    except Exception as e:  # noqa: BLE001
         print(e)
         return None
 
 
-def authenticateUser(email, password):
-    user = getUserFromEmail(email)
+def authenticateUser(email, password, session):
+    user = getUserFromEmail(email, session)
     if not user:
         print(1)
         return False
-    if not verifyPass(password, user.Password):
+    if not verifyPass(password, user.password_hash):
         print(0)
         return False
 
@@ -61,14 +54,16 @@ def authenticateUser(email, password):
 
 def createAccessToken(data, expiresDelta):
     toEncode = data.copy()
-    expire = datetime.utcnow() + expiresDelta
+    expire = datetime.now(UTC) + expiresDelta
 
     toEncode["exp"] = expire
     encoded = jwt.encode(toEncode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded
 
 
-async def getCurrentUser(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def getCurrentUser(
+    credentials: HTTPAuthorizationCredentials = Depends(security),  # noqa: B008
+):
     token = credentials.credentials
     credentialException = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -86,8 +81,29 @@ async def getCurrentUser(credentials: HTTPAuthorizationCredentials = Depends(sec
         print(e)
         raise credentialException
 
-    user = getUser(userId=tokenData.User_id)
+    user = getUser(userId=tokenData.id)
     if user is None:
         raise credentialException
 
+    return user
+
+
+def loginController(userInput: LoginModal, session):
+    user = authenticateUser(userInput.Email, userInput.Password, session)
+    accessTokenExpire = timedelta(minutes=TOKEN_EXPIRATION_TIME_MINUTS)
+    accessToken = createAccessToken(
+        data={"sub": str(user.id)}, expiresDelta=accessTokenExpire
+    )
+    return {"access_token": accessToken, "token_type": "bearer"}
+
+
+def signupController(userInput: SignupModal, session):
+    user = User(
+        user_name=userInput.Name,
+        email=userInput.Email,
+        password_hash=hashPass(userInput.Password),
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
     return user
