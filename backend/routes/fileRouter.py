@@ -12,10 +12,9 @@ fileRouter = APIRouter(prefix="/files")
 
 @fileRouter.post("/upload")
 async def upload(file: UploadFile, user: User = Depends(getCurrentUser)):  # noqa: B008
-    contents = await file.read()
     res = supabase.storage.from_("scan files").upload(
         path=f"{user.id}/{re.sub(r"[^a-zA-Z0-9._-]", "_", file.filename)}/enc",
-        file=encryptFile(contents),
+        file=encryptFile(await file.read()),
         file_options={
             "content-type": file.content_type,
         },
