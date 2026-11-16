@@ -15,6 +15,7 @@ dependencies = [
     "jose>=1.0.0",
     "passlib>=1.7.4",
     "psycopg2-binary==2.9.13",
+    "psycopg[binary]>=3.3.9",
     "python-jose[cryptography]>=3.5.0",
     "python-multipart>=0.0.32",
     "sqlmodel>=0.0.50",
