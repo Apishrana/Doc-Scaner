@@ -2,7 +2,8 @@ from datetime import UTC, datetime
 from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlalchemy import BigInteger, CheckConstraint, Null
+from sqlalchemy import BigInteger, CheckConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
 
@@ -52,14 +53,14 @@ class RedactionMode(str, Enum):
 
 class Scans(SQLModel, table=True):
     id: UUID = Field(primary_key=True, default_factory=uuid4)
-    user_id: UUID = Field(primary_key=True, foreign_key="user.id")
-    status: ScanStatus | None = ScanStatus.Pending
+    user_id: UUID = Field(foreign_key="user.id")
+    status: ScanStatus = ScanStatus.Pending
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ScanResults(SQLModel, table=True):
     id: UUID = Field(primary_key=True, default_factory=uuid4)
-    user_id: UUID = Field(primary_key=True, foreign_key="user.id")
+    scan_id: UUID = Field(unique=True, foreign_key="scans.id")
     pii_count: int = Field(
         default=0, sa_column_args=[CheckConstraint("pii_count >= 0")]
     )
@@ -68,17 +69,19 @@ class ScanResults(SQLModel, table=True):
 
 class Documents(SQLModel, table=True):
     id: UUID = Field(primary_key=True, default_factory=uuid4)
-    user_id: UUID = Field(primary_key=True, foreign_key="user.id")
+    user_id: UUID = Field(foreign_key="user.id")
     filename: str
     mime_type: str
     size_bytes: int = Field(
         sa_column_args=[CheckConstraint("size_bytes >= 0")], sa_type=BigInteger
     )
     sha256: str = Field(
-        sa_column_args=[CheckConstraint("(length(sha256) = 64)")], sa_type=BigInteger
+        sa_column_args=[
+            CheckConstraint("sha256 IS NULL OR sha256 ~ '^[0-9a-fA-F]{64}$'")
+        ]
     )
     storage_key: str | None = None
-    status: DocumentStatus | None = DocumentStatus.Uploaded
+    status: DocumentStatus = DocumentStatus.Uploaded
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_column_kwargs={"onupdate": lambda: datetime.now(UTC)},
@@ -90,31 +93,31 @@ class PiiTypes(SQLModel, table=True):
     code: str = Field(unique=True)
     text: str
     name: str
-    validator: PiiValidator | None = PiiValidator.Regex
-    severity: PiiSeverity | None = PiiSeverity.Medium
-    enabled: bool | None = True
+    validator: PiiValidator = PiiValidator.Regex
+    severity: PiiSeverity = PiiSeverity.Medium
+    enabled: bool = True
 
 
 class ScanPolicies(SQLModel, table=True):
     id: UUID = Field(primary_key=True, default_factory=uuid4)
-    user_id: UUID = Field(primary_key=True, foreign_key="user.id")
+    user_id: UUID = Field(foreign_key="user.id")
     name: str = Field(sa_column_args=[CheckConstraint("(length(name)>0)")])
-    min_confidence: float | None = Field(
+    min_confidence: float = Field(
         default=0.7,
         sa_column_args=[CheckConstraint("min_confidence >=0 and min_confidence <=1 ")],
     )
 
 
 class PolicyPiiTypes(SQLModel, table=True):
-    id: UUID = Field(foreign_key="ScanPolicies.id")
-    pii_type_id: UUID = Field(foreign_key="PiiTypes.id")
+    id: UUID = Field(foreign_key="scanpolicies.id", primary_key=True)
+    pii_type_id: int = Field(foreign_key="piitypes.id", primary_key=True)
 
 
 class ScanJobs(SQLModel, table=True):
     id: UUID = Field(primary_key=True, default_factory=uuid4)
-    document_id: UUID = Field(foreign_key="Documents.id")
-    policy_id: UUID = Field(foreign_key="ScanPolicies.id")
-    status: ScanJobStatus | Null = ScanJobStatus.Queued
+    document_id: UUID = Field(foreign_key="documents.id")
+    policy_id: UUID | None = Field(foreign_key="scanpolicies.id")
+    status: ScanJobStatus = ScanJobStatus.Queued
     pii_count: int = Field(
         default=0, sa_column_args=[CheckConstraint("pii_count >= 0")]
     )
@@ -125,22 +128,24 @@ class ScanJobs(SQLModel, table=True):
 
 class Detections(SQLModel, table=True):
     id: UUID = Field(primary_key=True, default_factory=uuid4)
-    scan_job_id: UUID = Field(foreign_key="ScanJobs.id")
-    pii_type_id: int = Field(foreign_key="PiiTypes.id")
-    page_no: int = Field(default=Null, sa_column_args=[CheckConstraint("page_no >= 1")])
-    bbox: dict[str, int] | None = None
+    scan_job_id: UUID = Field(foreign_key="scanjobs.id")
+    pii_type_id: int = Field(foreign_key="piitypes.id")
+    page_no: int | None = Field(
+        default=None, sa_column_args=[CheckConstraint("page_no >= 1")]
+    )
+    bbox: dict[str, int] | None = Field(default=None, sa_type=JSONB)
     masked_value: str | None = None
     value_hash: str | None = None
-    confidence: float | None = Field(
-        sa_column_args=[CheckConstraint("min_confidence >=0 and min_confidence <=1 ")],
+    confidence: float = Field(
+        sa_column_args=[CheckConstraint("confidence >=0 and confidence <=1 ")],
     )
-    source: PiiValidator | None = PiiValidator.Regex
-    action: DetectionAction | None = DetectionAction.Pending
+    source: PiiValidator = PiiValidator.Regex
+    action: DetectionAction = DetectionAction.Pending
 
 
 class Redactions(SQLModel, table=True):
     id: UUID = Field(primary_key=True, default_factory=uuid4)
-    scan_job_id: UUID = Field(foreign_key="ScanJobs.id")
+    scan_job_id: UUID = Field(foreign_key="scanjobs.id")
     mode: RedactionMode
     output_storage_key: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -148,7 +153,7 @@ class Redactions(SQLModel, table=True):
 
 class AuditLogs(SQLModel, table=True):
     id: UUID = Field(primary_key=True, default_factory=uuid4)
-    user_id: UUID = Field(primary_key=True, foreign_key="user.id")
+    user_id: UUID = Field(foreign_key="user.id")
     action: str | None = None
     entity: str | None = None
     entity_id: UUID | None = None

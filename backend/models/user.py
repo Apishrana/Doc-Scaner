@@ -15,7 +15,7 @@ class User(SQLModel, table=True):
     email: str = Field(unique=True)
     password_hash: str
     user_name: str
-    role: UserRole | None = UserRole.User
+    role: UserRole = UserRole.User
     fcm_token: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(

@@ -5,7 +5,7 @@ from models.auth import LoginModal, SignupModal
 from sqlmodel import Session
 from tool.db import getSession
 
-authRouter = APIRouter(prefix="/auth")
+authRouter = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @authRouter.post("/login")

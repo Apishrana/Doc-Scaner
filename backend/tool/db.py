@@ -1,6 +1,8 @@
 import os
 
 from dotenv import load_dotenv
+from models.scans import Documents  # noqa: F401
+from models.user import User  # noqa: F401
 from sqlmodel import Session, SQLModel, create_engine
 from supabase import Client, create_client
 
